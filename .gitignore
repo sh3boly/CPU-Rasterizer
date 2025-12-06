@@ -1,0 +1,27 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.opendb
+*.VC.db
+
+# Build directories
+Debug/
+Release/
+x64/
+x86/
+build/
+
+# Intermediate files
+*.obj
+*.o
+*.pch
+*.pdb
+*.idb
+*.log
+*.tmp
+*.cache
+*.ipch
+*.ppm
+# Auto-generated files
+GeneratedFiles/

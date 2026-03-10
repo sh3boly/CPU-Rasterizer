@@ -36,39 +36,70 @@ void rasterizeTriangle(Triangle& t1) {
         std::swap(v1, v2);
         area = -area;
     }
-    for (uint32_t j = 0; j < h; j++) {
-        for (uint32_t i = 0; i < w; i++) {
-            Vec2 p = { i + 0.5f, j + 0.5f};
 
-            // Barycentric Coordinates and Colors
-            float w0 = edgeFunction((Vec2)v1.coordinates, (Vec2)v2.coordinates, p);
-            float w1 = edgeFunction((Vec2)v2.coordinates, (Vec2)v0.coordinates, p);
-            float w2 = edgeFunction((Vec2)v0.coordinates, (Vec2)v1.coordinates, p);
+    // calculate bounding boxes
+    std::vector<uint32_t> bbmin = { w, h };
+    std::vector<uint32_t> bbmax = { 0, 0 };
+    bbmin[0] = std::min(v0.coordinates.x, std::min(v1.coordinates.x, v2.coordinates.x));
+    bbmin[1] = std::min(v0.coordinates.y, std::min(v1.coordinates.y, v2.coordinates.y));
 
+    bbmax[0] = std::max(v0.coordinates.x, std::max(v1.coordinates.x, v2.coordinates.x));
+    bbmax[1] = std::max(v0.coordinates.y, std::max(v1.coordinates.y, v2.coordinates.y));
+
+    Vec2 p = { bbmin[0] + 0.5f, bbmin[1] + 0.5f};
+
+    // Barycentric Coordinates
+    float w0 = edgeFunction((Vec2)v1.coordinates, (Vec2)v2.coordinates, p);
+    float w1 = edgeFunction((Vec2)v2.coordinates, (Vec2)v0.coordinates, p);
+    float w2 = edgeFunction((Vec2)v0.coordinates, (Vec2)v1.coordinates, p);
+
+    float deltaX0 = v2.coordinates.x - v1.coordinates.x;
+    float deltaX1 = v0.coordinates.x - v2.coordinates.x;
+    float deltaX2 = v1.coordinates.x - v0.coordinates.x;
+
+    float deltaY0 = v2.coordinates.y - v1.coordinates.y;
+    float deltaY1 = v0.coordinates.y - v2.coordinates.y;
+    float deltaY2 = v1.coordinates.y - v0.coordinates.y;
+    float divArea = 1.0f / area;
+    for (uint32_t j = bbmin[1] + 1; j < bbmax[1] + 1; j++) {
+        
+        w0 += deltaX0;
+        w1 += deltaX1;
+        w2 += deltaX2;
+        float tempW0 = w0;
+        float tempW1 = w1;
+        float tempW2 = w2;
+        for (uint32_t i = bbmin[0] + 1; i < bbmax[0] + 1; i++) {
+            w0 -= deltaY0;
+            w1 -= deltaY1;
+            w2 -= deltaY2;
 
             if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
 
-                w0 = std::max(0.f, w0 / area);
-                w1 = std::max(0.f, w1 / area);
-                w2 = std::max(0.f, w2 / area);
+                float normalizedW0 = std::max(0.f, w0 * divArea);
+                float normalizedW1 = std::max(0.f, w1 * divArea);
+                float normalizedW2 = std::max(0.f, w2 * divArea);
+                float z = normalizedW0 * v0.coordinates.z + normalizedW1 * v1.coordinates.z + normalizedW2 * v2.coordinates.z;
+                z = -z;
+                if (z >= zbuffer[j * w + i]) continue;
                 Vec3& c0 = v0.color;
                 Vec3& c1 = v1.color;
                 Vec3& c2 = v2.color;
 
-                float r = w0 * c0.x + w1 * c1.x + w2 * c2.x;
-                float g = w0 * c0.y + w1 * c1.y + w2 * c2.y;
-                float b = w0 * c0.z + w1 * c1.z + w2 * c2.z;
+                float r = normalizedW0 * c0.x + normalizedW1 * c1.x + normalizedW2 * c2.x;
+                float g = normalizedW0 * c0.y + normalizedW1 * c1.y + normalizedW2 * c2.y;
+                float b = normalizedW0 * c0.z + normalizedW1 * c1.z + normalizedW2 * c2.z;
 
-                float z = w0 * v0.coordinates.z + w1 * v1.coordinates.z + w2 * v2.coordinates.z;
-                z = -z;
-                if (z < zbuffer[j * w + i]) {
-                    zbuffer[j * w + i] = z;
-                    framebuffer[j * w + i].r = (unsigned char)(std::min(std::max(r, 0.f), 1.f) * 255);
-                    framebuffer[j * w + i].g = (unsigned char)(std::min(std::max(g, 0.f), 1.f) * 255);
-                    framebuffer[j * w + i].b = (unsigned char)(std::min(std::max(b, 0.f), 1.f) * 255);
-                }
+                
+                zbuffer[j * w + i] = z;
+                framebuffer[j * w + i].r = (unsigned char)(std::min(std::max(r, 0.f), 1.f) * 255);
+                framebuffer[j * w + i].g = (unsigned char)(std::min(std::max(g, 0.f), 1.f) * 255);
+                framebuffer[j * w + i].b = (unsigned char)(std::min(std::max(b, 0.f), 1.f) * 255);
             }
         }
+        w0 = tempW0;
+        w1 = tempW1;
+        w2 = tempW2;
     }
 }
 
@@ -112,15 +143,20 @@ void outputPPM() {
 
     ofs.close();
 }
+void project(Triangle& tri) {
+    
+}
 void testTriangulate() {
     memset(framebuffer, 0x0, w * h * sizeof(Rgb));
     memset(zbuffer, 1.0, w * h * sizeof(float));
     std::vector<Vec2> vertices(5);
-    vertices[4] = Vec2(200, 100);
-    vertices[3] = Vec2(0, 0);
-    vertices[2] = Vec2(50, 70);
-    vertices[1] = Vec2(50, 130);
-    vertices[0] = Vec2(0, 200);
+    // We want to something like projecting in the Z-axis so we basically divide by x
+    // we'll asume for now that we are going to have the the thing give 
+    vertices[4] = Vec3(200, 100, 50);
+    vertices[3] = Vec3(0, 0, 50);
+    vertices[2] = Vec3(50, 70, 70);
+    vertices[1] = Vec3(50, 130, 20);
+    vertices[0] = Vec3(0, 200, 90);
     PolygonHelper h;
     std::string errorMessage;
     std::vector<int> triangles = h.triangulate(vertices, errorMessage);
@@ -134,8 +170,12 @@ void testTriangulate() {
         }
     }
     for (auto tri : tris) {
+        project(tri);
+    }
+    for (auto tri : tris) {
         rasterizeTriangle(tri);
     }
+
     outputPPM();
     delete[] framebuffer;
 }

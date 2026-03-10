@@ -4,6 +4,8 @@
 #include <fstream>
 #include "My_Math.h"
 #include "PolygonHelper.h"
+#include <chrono>
+#include <iostream>
 struct Vertex {
     Vec3 coordinates;
     Vec3 color;
@@ -177,8 +179,23 @@ void testTriangulate() {
     }
 
     outputPPM();
-    delete[] framebuffer;
+    
 }
+
 int main() {
-    testTriangulate();
+    std::chrono::duration<double, std::milli> min_duration = std::chrono::duration<double, std::milli>::max();
+    for (int i = 0; i < 99; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        testTriangulate();
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> current_duration = end - start;
+
+        // Update min_duration if the current run was faster
+        min_duration = std::min(min_duration, current_duration);
+    }
+    std::cout << "Fastest execution time: " << min_duration.count() << " ms\n";
+    delete[] framebuffer;
+    delete[] zbuffer;
 }

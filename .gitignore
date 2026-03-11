@@ -23,5 +23,6 @@ build/
 *.cache
 *.ipch
 *.ppm
+*.mtl
 # Auto-generated files
 GeneratedFiles/

@@ -1,5 +1,7 @@
 #include <iostream>
 #pragma once
+#undef near
+#undef far
 class Vec3;
 class Vec2
 {

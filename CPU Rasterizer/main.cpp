@@ -1,8 +1,11 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#define NOMINMAX
+#include "window.h"
 #include "My_Math.h"
 #include "PolygonHelper.h"
+
 #include <chrono>
 #include <iostream>
 #include <algorithm>
@@ -10,6 +13,33 @@
 #include <sstream>
 #include <vector>
 #include <string>
+
+void resizeDibSection(Buffer* buf, int width=512, int height=512) {
+    buf->width = width;
+    buf->height = height;
+
+    buf->info = {}; 
+
+    buf->info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    buf->info.bmiHeader.biWidth = width;
+    buf->info.bmiHeader.biHeight = -height;
+    buf->info.bmiHeader.biPlanes = 1;
+    buf->info.bmiHeader.biBitCount = 32;
+    buf->info.bmiHeader.biCompression = BI_RGB;
+
+    int bytesPerPixel = 4;
+    buf->pitch = width * bytesPerPixel;
+
+    buf->memory = VirtualAlloc(
+            0,
+            width * height * bytesPerPixel,
+            MEM_COMMIT,
+            PAGE_READWRITE
+            );
+
+}
+
+
 struct Vertex
 {
     Vec3 coordinates;
@@ -32,9 +62,9 @@ inline float edgeFunction(const Vec2 &a, const Vec2 &b, const Vec2 &c)
 {
     return crossProduct(b - a, c - a);
 }
+
 const uint32_t w = 512;
 const uint32_t h = 512;
-Rgb *framebuffer = new Rgb[w * h];
 float *zbuffer = new float[w * h];
 float minX = INFINITY, maxX = -INFINITY;
 float minY = INFINITY, maxY = -INFINITY;
@@ -127,7 +157,7 @@ std::vector<Triangle> loadObj(std::string filename) {
     return mesh;
 }
 
-void rasterizeTriangle(Triangle &t1)
+void rasterizeTriangle(Triangle &t1, Buffer *buffer)
 {
     Vertex &v0 = t1.vertices[0];
     Vertex &v1 = t1.vertices[1];
@@ -178,6 +208,8 @@ void rasterizeTriangle(Triangle &t1)
     float deltaY1 = v0.coordinates.y - v2.coordinates.y;
     float deltaY2 = v1.coordinates.y - v0.coordinates.y;
     float divArea = 1.0f / area;
+
+    uint32_t* pixel = (uint32_t*)buffer->memory;
     for (uint32_t j = bbmin[1] + 1; j < bbmax[1] + 1; j++)
     {
 
@@ -210,10 +242,13 @@ void rasterizeTriangle(Triangle &t1)
                 float g = normalizedW0 * c0.y + normalizedW1 * c1.y + normalizedW2 * c2.y;
                 float b = normalizedW0 * c0.z + normalizedW1 * c1.z + normalizedW2 * c2.z;
 
+                uint32_t rInt = (uint32_t)(std::min(std::max(r, 0.f), 1.f) * 255); 
+                uint32_t gInt = (uint32_t)(std::min(std::max(g, 0.f), 1.f) * 255); 
+                uint32_t bInt = (uint32_t)(std::min(std::max(b, 0.f), 1.f) * 255); 
+
                 zbuffer[j * w + i] = z;
-                framebuffer[j * w + i].r = (unsigned char)(std::min(std::max(r, 0.f), 1.f) * 255);
-                framebuffer[j * w + i].g = (unsigned char)(std::min(std::max(g, 0.f), 1.f) * 255);
-                framebuffer[j * w + i].b = (unsigned char)(std::min(std::max(b, 0.f), 1.f) * 255);
+                uint32_t* curr = pixel + (j * w + i);
+                *curr = (rInt << 16) | (gInt << 8) | (bInt);
             }
         }
         w0 = tempW0;
@@ -222,47 +257,17 @@ void rasterizeTriangle(Triangle &t1)
     }
 }
 
-void tempRasterizer()
-{
-    Vertex v0, v1, v2, v3, v4, v5;
-    v0.coordinates = {0.0, 0.0, 20};
-    v1.coordinates = {512.0, 512.0, 20};
-    v2.coordinates = {0, 512.0, 20};
-    v0.color = {1.0, 0.0, 0.0};
-    v1.color = {1.0, 0.0, 0.0};
-    v2.color = {1.0, 0.0, 0.0};
-    v3.coordinates = {0.0, 512.0, 10};
-    v4.coordinates = {512.0, 512.0, 10};
-    v5.coordinates = {512.0, 0.0, 10};
-    v3.color = {0.0, 0.0, 1.0};
-    v4.color = {0.0, 0.0, 1.0};
-    v5.color = {0.0, 0.0, 1.0};
-    Triangle t1;
-    t1.vertices[0] = v0;
-    t1.vertices[1] = v1;
-    t1.vertices[2] = v2;
-    Triangle t2;
-    t2.vertices[0] = v3;
-    t2.vertices[1] = v4;
-    t2.vertices[2] = v5;
+//void outputPPM()
+//{
+//    std::ofstream ofs;
+//    ofs.open("./raster2d.ppm", std::ios::binary);
+//    ofs << "P6\n"
+//        << w << " " << h << "\n255\n";
+//    ofs.write((char *)framebuffer, w * h * 3);
+//
+//    ofs.close();
+//}
 
-    memset(framebuffer, 0x0, w * h * sizeof(Rgb));
-    memset(zbuffer, 1.0, w * h * sizeof(float));
-    rasterizeTriangle(t1);
-    rasterizeTriangle(t2);
-
-    delete[] framebuffer;
-}
-void outputPPM()
-{
-    std::ofstream ofs;
-    ofs.open("./raster2d.ppm", std::ios::binary);
-    ofs << "P6\n"
-        << w << " " << h << "\n255\n";
-    ofs.write((char *)framebuffer, w * h * 3);
-
-    ofs.close();
-}
 void project(Triangle &tri, const Mat4 &mvp)
 {
     for (int i = 0; i < 3; i++) {
@@ -278,9 +283,9 @@ void project(Triangle &tri, const Mat4 &mvp)
     }
 
 }
-void testTriangulate()
+void testTriangulate(Buffer *buffer)
 {
-    memset(framebuffer, 0x0, w * h * sizeof(Rgb));
+    resizeDibSection(buffer);
     memset(zbuffer, 1.0, w * h * sizeof(float));
     std::vector<Triangle> mesh = loadObj("Untitled.obj");
     
@@ -299,29 +304,25 @@ void testTriangulate()
 
     for (auto& tri : mesh)
     {
-        rasterizeTriangle(tri);
+        rasterizeTriangle(tri, buffer);
     }
 
-    outputPPM();
 }
 
-int main()
+
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
 {
-    //std::chrono::duration<double, std::milli> min_duration = std::chrono::duration<double, std::milli>::max();
-    //for (int i = 0; i < 99; i++)
-    //{ 
-    //    auto start = std::chrono::high_resolution_clock::now();
 
-    //    testTriangulate();
+    MSG msg;
+    Buffer buffer; 
 
-    //    auto end = std::chrono::high_resolution_clock::now();
-    //    std::chrono::duration<double, std::milli> current_duration = end - start;
+    testTriangulate(&buffer);
 
-    //    // Update min_duration if the current run was faster
-    //    min_duration = std::min(min_duration, current_duration);
-    //}
-    //std::cout << "Fastest execution time: " << min_duration.count() << " ms\n";
-    //delete[] framebuffer;
-    //delete[] zbuffer;
-    testTriangulate();
+    Window window(L"Renderer", hInstance, nCmdShow, &buffer);
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+    }
+    return 0;
 }

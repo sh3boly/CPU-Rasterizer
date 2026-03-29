@@ -106,6 +106,28 @@ public:
 			SRCCOPY
 		);
 	}
+
+	void showFPS(double fps) {
+		HDC hdc = GetDC(hWnd);
+		WCHAR buffer[64];
+		swprintf_s(buffer, L"FPS: %.2f", fps);;
+		RECT rect;
+
+		rect.left = 10;
+		rect.top = 10;
+		rect.right = 200;
+		rect.bottom = 50;
+
+		DrawText(
+			hdc,
+			buffer,
+			-1,
+			&rect,
+			DT_CENTER
+		);
+
+		ReleaseDC(hWnd, hdc);
+	}
 	
 };
 

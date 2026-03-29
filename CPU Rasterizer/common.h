@@ -16,7 +16,7 @@
 #include <vector>
 #include <string>
 
-
+static int64_t Frequency;
 static bool running = true;
 
 struct Buffer {
@@ -324,4 +324,19 @@ static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Triangl
         project(projected, mvp, buffer->width, buffer->height);
         rasterizeTriangle(projected, buffer, zBuffer);
     }
+}
+
+
+// Timers
+
+static inline int64_t getTicks() {
+    LARGE_INTEGER ticks;
+    if (!QueryPerformanceCounter(&ticks)) {
+        throw std::runtime_error("Failed to get ticks from QueryPerformanceCounter");
+    }
+    return ticks.QuadPart;
+}
+
+static inline float getElapsed(int64_t start, int64_t end) {
+    return (float)(end - start) / (float)Frequency;
 }

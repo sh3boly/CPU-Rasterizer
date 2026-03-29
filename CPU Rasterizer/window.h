@@ -1,8 +1,6 @@
 #define NOMINMAX
 #include "common.h"
 #include <stdexcept>
-
-
 class Window {
 private:
 	const wchar_t*	name;
@@ -25,27 +23,17 @@ private:
 		if (window) {
 			switch (uMsg)
 				{
-				case WM_PAINT: {
-				    PAINTSTRUCT ps;
-				    HDC dc = BeginPaint(hwnd, &ps);
-
-				    StretchDIBits(
-					dc,
-					0, 0, window->buffer->width, window->buffer->height,
-					0, 0, window->buffer->width, window->buffer->height,
-					window->buffer->memory,
-					&window->buffer->info,
-					DIB_RGB_COLORS,
-					SRCCOPY
-				    );
-
-				    EndPaint(hwnd, &ps);
+				case WM_SIZE: {
+					uint32_t width = LOWORD(lParam);
+					uint32_t height = HIWORD(lParam);
+					window->resize(width, height);
 				} break;
 				case WM_CLOSE: {
 					DestroyWindow(window->hWnd);
 				} break;
 				case WM_DESTROY: {
 					PostQuitMessage(0);
+					running = false;
 					return 0;
 
 				} break;
@@ -56,7 +44,11 @@ private:
 	}
 
 public:
-	Window(const wchar_t* name, HINSTANCE hInstance, int nCmdShow, Buffer *buffer) : name(name), hInstance(hInstance), buffer(buffer) {
+	bool		shouldResize;
+	uint32_t	width;
+	uint32_t	height;
+
+	Window(const wchar_t* name, HINSTANCE hInstance, int nCmdShow, Buffer *buffer, uint32_t w = 512, uint32_t h = 512) : name(name), hInstance(hInstance), buffer(buffer) {
 		WNDCLASS wc = {};
 
 		wc.lpfnWndProc		= WindowProc;
@@ -65,6 +57,9 @@ public:
 		
 		RegisterClass(&wc);
 
+		this->width = w;
+		this->height = h;
+		this->shouldResize = false;
 
 		this->hWnd = CreateWindowEx(
 		    0,                              // Optional window styles.
@@ -72,14 +67,16 @@ public:
 		    this->name,			    // Window text
 		    WS_OVERLAPPEDWINDOW,            // Window style
 
-		    // Size and position
-		    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			CW_USEDEFAULT, // X
+			CW_USEDEFAULT, // Y
+			w,				// Width
+			h,				// Height
 
-		    NULL,       // Parent window    
-		    NULL,       // Menu
-		    this->hInstance,  // Instance handle
-		    this
-		    );
+			NULL,       // Parent window    
+			NULL,       // Menu
+			this->hInstance,  // Instance handle
+			this
+				);
 
 		if (this->hWnd == NULL)
 		{
@@ -88,7 +85,27 @@ public:
 
 		ShowWindow(this->hWnd, nCmdShow);
 	}
+	
+	void resize(uint32_t width, uint32_t height) {
+		this->width = width;
+		this->height = height;
+		resizeDibSection(this->buffer, this->width, this->height);
+		shouldResize = true;
+	}
 
+	void display() {
+		HDC dc = GetDC(this->hWnd);
+
+		StretchDIBits(
+			dc,
+			0, 0, this->buffer->width, this->buffer->height,
+			0, 0, this->buffer->width, this->buffer->height,
+			this->buffer->memory,
+			&this->buffer->info,
+			DIB_RGB_COLORS,
+			SRCCOPY
+		);
+	}
 	
 };
 

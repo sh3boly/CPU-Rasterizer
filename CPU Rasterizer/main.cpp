@@ -1,3 +1,4 @@
+#include "PolygonHelper.h"
 #include "window.h"
 #pragma comment(lib, "Winmm.lib")
 #include <mmsystem.h>
@@ -7,8 +8,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     QueryPerformanceFrequency(&freq);
     Frequency = freq.QuadPart;
     MSG msg;
-    Buffer buffer; 
-    std::vector<Triangle> mesh = loadObj("Untitled.obj");
+    Buffer buffer;
+    std::vector<Triangle> scene;
+
+    //scene = loadObj("Untitled.obj");
+
+    PrimitiveInfo info;
+    info.x = 16;
+    info.y = 6;
+    info.size = {1.0f, 1.0f, 1.0f};
+
+    Mesh sphere = createSphere(info);
+    scene = sphere.triangles;
     Window window(L"Renderer", hInstance, nCmdShow, &buffer);
     float* zBuffer = new float[buffer.width * buffer.height];
     clearZBuffer(zBuffer, buffer.width, buffer.height);
@@ -29,10 +40,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         int64_t end = getTicks();
         double elapsed = getElapsed(start, end);
 
-       
-
-        graphicsPipeline(&buffer, zBuffer, mesh);
-
+        graphicsPipeline(&buffer, zBuffer, scene);
+        
         window.display();
         if (elapsed < secondsPerFrame) {
             if (sleepGranular) {

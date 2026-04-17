@@ -16,6 +16,8 @@
 #include <vector>
 #include <string>
 
+static float PI = 3.14159265358979323846f;
+
 static int64_t Frequency;
 static bool running = true;
 
@@ -55,7 +57,7 @@ static void resizeDibSection(Buffer* buf, uint32_t width, uint32_t height) {
 }
 static void clearZBuffer(float*& zBuffer, int width, int height) {
     for (size_t i = 0; i < width * height; i++) {
-        zBuffer[i] = 0.f;
+        zBuffer[i] = INFINITY;
     }
 }
 
@@ -89,11 +91,14 @@ inline float edgeFunction(const Vec2& a, const Vec2& b, const Vec2& c)
 {
     return crossProduct(b - a, c - a);
 }
+inline bool topLeft(const float dy, const float dx) {
+    return (dy > 0) || (dy == 0 && dx < 0);
+}
 
 float minX = INFINITY, maxX = -INFINITY;
 float minY = INFINITY, maxY = -INFINITY;
 float minZ = INFINITY, maxZ = -INFINITY;
-float size;
+float size = 1;
 std::vector<Triangle> loadObj(std::string filename) {
     std::vector<Vec3> t_positions;
     std::vector<Vec3> temp_positions;
@@ -177,7 +182,7 @@ std::vector<Triangle> loadObj(std::string filename) {
             continue;
         }
     }
-    size = std::max(maxX - minX, std::max(maxY - minY, maxZ - minY));
+    size = std::max(maxX - minX, std::max(maxY - minY, maxZ - minZ));
     return mesh;
 }
 
@@ -186,7 +191,8 @@ void rasterizeTriangle(Triangle& t1, Buffer* buffer, float* zbuffer)
     Vertex& v0 = t1.vertices[0];
     Vertex& v1 = t1.vertices[1];
     Vertex& v2 = t1.vertices[2];
-    float gray0 = (v0.coordinates.z - minZ) / (maxZ - minZ);
+
+    /*float gray0 = (v0.coordinates.z - minZ) / (maxZ - minZ);
     float gray1 = (v1.coordinates.z - minZ) / (maxZ - minZ);
     float gray2 = (v2.coordinates.z - minZ) / (maxZ - minZ);
 
@@ -200,29 +206,26 @@ void rasterizeTriangle(Triangle& t1, Buffer* buffer, float* zbuffer)
 
     v2.color.x = gray2;
     v2.color.y = gray2;
-    v2.color.z = gray2;
+    v2.color.z = gray2;*/
     float area = edgeFunction((Vec2)v0.coordinates, (Vec2)v1.coordinates, (Vec2)v2.coordinates);
     if (area < 0)
         return;
 
     // calculate bounding boxes
-    std::vector<uint32_t> bbmin = { buffer->width, buffer->height };
-    std::vector<uint32_t> bbmax = { 0, 0 };
-    bbmin[0] = std::min(v0.coordinates.x, std::min(v1.coordinates.x, v2.coordinates.x));
-    bbmin[1] = std::min(v0.coordinates.y, std::min(v1.coordinates.y, v2.coordinates.y));
+    float minX = std::min(v0.coordinates.x, std::min(v1.coordinates.x, v2.coordinates.x));
+    float minY = std::min(v0.coordinates.y, std::min(v1.coordinates.y, v2.coordinates.y));
+    float maxX = std::max(v0.coordinates.x, std::max(v1.coordinates.x, v2.coordinates.x));
+    float maxY = std::max(v0.coordinates.y, std::max(v1.coordinates.y, v2.coordinates.y));
 
-    bbmax[0] = std::max(v0.coordinates.x, std::max(v1.coordinates.x, v2.coordinates.x));
-    bbmax[1] = std::max(v0.coordinates.y, std::max(v1.coordinates.y, v2.coordinates.y));
-    bbmax[0] = std::min(buffer->width - 1, bbmax[0]);
-    bbmax[1] = std::min(buffer->height - 1, bbmax[1]);
-    bbmin[0] = std::min(buffer->width - 1, bbmin[0]);
-    bbmin[1] = std::min(buffer->height - 1, bbmin[1]);
-    Vec2 p = { bbmin[0] + 0.5f, bbmin[1] + 0.5f };
-
+    int x0 = std::max(0, (int)std::floor(minX));
+    int y0 = std::max(0, (int)std::floor(minY));
+    int x1 = std::min((int)buffer->width - 1, (int)std::floor(maxX));
+    int y1 = std::min((int)buffer->height - 1, (int)std::floor(maxY));
+    Vec2 p = { x0 + 0.5f, y0 + 0.5f };
     // Barycentric Coordinates
-    float w0 = edgeFunction((Vec2)v1.coordinates, (Vec2)v2.coordinates, p);
-    float w1 = edgeFunction((Vec2)v2.coordinates, (Vec2)v0.coordinates, p);
-    float w2 = edgeFunction((Vec2)v0.coordinates, (Vec2)v1.coordinates, p);
+    float initialW0 = edgeFunction((Vec2)v1.coordinates, (Vec2)v2.coordinates, p);
+    float initialW1 = edgeFunction((Vec2)v2.coordinates, (Vec2)v0.coordinates, p);
+    float initialW2 = edgeFunction((Vec2)v0.coordinates, (Vec2)v1.coordinates, p);
 
     float deltaX0 = v2.coordinates.x - v1.coordinates.x;
     float deltaX1 = v0.coordinates.x - v2.coordinates.x;
@@ -231,53 +234,60 @@ void rasterizeTriangle(Triangle& t1, Buffer* buffer, float* zbuffer)
     float deltaY0 = v2.coordinates.y - v1.coordinates.y;
     float deltaY1 = v0.coordinates.y - v2.coordinates.y;
     float deltaY2 = v1.coordinates.y - v0.coordinates.y;
+
+    bool topLeft0 = topLeft(deltaY0, deltaX0);
+    bool topLeft1 = topLeft(deltaY1, deltaX1);
+    bool topLeft2 = topLeft(deltaY2, deltaX2);
+
     float divArea = 1.0f / area;
-
+    float w0Row = initialW0;
+    float w1Row = initialW1;
+    float w2Row = initialW2;
     uint32_t* pixel = (uint32_t*)buffer->memory;
-    for (uint32_t j = bbmin[1] + 1; j < bbmax[1] + 1; j++)
-    {
-
-        w0 += deltaX0;
-        w1 += deltaX1;
-        w2 += deltaX2;
-        float tempW0 = w0;
-        float tempW1 = w1;
-        float tempW2 = w2;
-        for (uint32_t i = bbmin[0] + 1; i < bbmax[0] + 1; i++)
+    for (uint32_t j = y0 ; j <= y1; j++)
+    {   
+        float w0 = w0Row;
+        float w1 = w1Row;
+        float w2 = w2Row;
+        for (uint32_t i = x0; i <= x1; i++)
         {
-            w0 -= deltaY0;
-            w1 -= deltaY1;
-            w2 -= deltaY2;
-
-            if (w0 >= 0 && w1 >= 0 && w2 >= 0)
-            {
+         
+            if ((w0 > 0 || (w0 == 0 && topLeft0))
+                && (w1 > 0 || (w1 == 0 && topLeft1))
+                && (w2 > 0 || (w2 == 0 && topLeft2))
+                )
+            {       
 
                 float normalizedW0 = std::max(0.f, w0 * divArea);
                 float normalizedW1 = std::max(0.f, w1 * divArea);
                 float normalizedW2 = std::max(0.f, w2 * divArea);
                 float z = normalizedW0 * v0.coordinates.z + normalizedW1 * v1.coordinates.z + normalizedW2 * v2.coordinates.z;
-                if (z >= zbuffer[j * buffer->width + i])
-                    continue;
-                Vec3& c0 = v0.color;
-                Vec3& c1 = v1.color;
-                Vec3& c2 = v2.color;
+                if (z < zbuffer[j * buffer->width + i])
+                {
+                    Vec3& c0 = v0.color;
+                    Vec3& c1 = v1.color;
+                    Vec3& c2 = v2.color;
 
-                float r = normalizedW0 * c0.x + normalizedW1 * c1.x + normalizedW2 * c2.x;
-                float g = normalizedW0 * c0.y + normalizedW1 * c1.y + normalizedW2 * c2.y;
-                float b = normalizedW0 * c0.z + normalizedW1 * c1.z + normalizedW2 * c2.z;
+                    float r = normalizedW0 * c0.x + normalizedW1 * c1.x + normalizedW2 * c2.x;
+                    float g = normalizedW0 * c0.y + normalizedW1 * c1.y + normalizedW2 * c2.y;
+                    float b = normalizedW0 * c0.z + normalizedW1 * c1.z + normalizedW2 * c2.z;
 
-                uint32_t rInt = (uint32_t)(std::min(std::max(r, 0.f), 1.f) * 255);
-                uint32_t gInt = (uint32_t)(std::min(std::max(g, 0.f), 1.f) * 255);
-                uint32_t bInt = (uint32_t)(std::min(std::max(b, 0.f), 1.f) * 255);
+                    uint32_t rInt = (uint32_t)(std::min(std::max(r, 0.f), 1.f) * 255);
+                    uint32_t gInt = (uint32_t)(std::min(std::max(g, 0.f), 1.f) * 255);
+                    uint32_t bInt = (uint32_t)(std::min(std::max(b, 0.f), 1.f) * 255);
 
-                zbuffer[j * buffer->width + i] = z;
-                uint32_t* curr = pixel + (j * buffer->width + i);
-                *curr = (rInt << 16) | (gInt << 8) | (bInt);
+                    zbuffer[j * buffer->width + i] = z;
+                    uint32_t* curr = pixel + (j * buffer->width + i);
+                    *curr = (rInt << 16) | (gInt << 8) | (bInt);
+                }
             }
+            w0 -= deltaY0;
+            w1 -= deltaY1;
+            w2 -= deltaY2;
         }
-        w0 = tempW0;
-        w1 = tempW1;
-        w2 = tempW2;
+        w0Row += deltaX0;
+        w1Row += deltaX1;
+        w2Row += deltaX2;
     }
 }
 
@@ -295,9 +305,9 @@ void rasterizeTriangle(Triangle& t1, Buffer* buffer, float* zbuffer)
 void project(Triangle& tri, const Mat4& mvp, uint32_t w, uint32_t h)
 {
     for (int i = 0; i < 3; i++) {
-        tri.vertices[i].coordinates.x /= size;
+        /*tri.vertices[i].coordinates.x /= size;
         tri.vertices[i].coordinates.y /= size;
-        tri.vertices[i].coordinates.z /= size;
+        tri.vertices[i].coordinates.z /= size;*/
 
         tri.vertices[i].coordinates = mvp * tri.vertices[i].coordinates;
 
@@ -311,7 +321,9 @@ void project(Triangle& tri, const Mat4& mvp, uint32_t w, uint32_t h)
 
 static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Triangle> &scene)
 {
-    Mat4 model = makeTranslationMatrix(Vec3(0.0f, 0.0f, -1.0f));
+    Mat4 scaling = makeScalingMatrix(Vec3(1.f, 1.f, 1.f));
+
+    Mat4 model = makeTranslationMatrix(Vec3(0.0f, 0.0f, -2.f));
     Mat4 view = Mat4::identity();
     Mat4 projectionMatrix = makePerspectiveMatrix(90, (float)buffer->width / buffer->height, 0.1f, 100.0f);
 
@@ -326,13 +338,12 @@ static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Triangl
     }
 }
 
-
 // Timers
 
 static inline int64_t getTicks() {
     LARGE_INTEGER ticks;
     if (!QueryPerformanceCounter(&ticks)) {
-        throw std::runtime_error("Failed to get ticks from QueryPerformanceCounter");
+        throw std::runtime_error("Failed get ticks from QueryPerformanceCounter");
     }
     return ticks.QuadPart;
 }

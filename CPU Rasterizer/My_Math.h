@@ -63,6 +63,9 @@ public:
 		t.z = this->z - v.z;
 		return t;
 	}
+	float length() const {
+		return std::sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
+	}
 
 	operator Vec2() const {
 		Vec2 t;
@@ -301,4 +304,15 @@ Vec2::operator Vec3(){
 	t.y = this->y;
 	t.z = 0.f;
 	return t;
+}
+
+static Vec3 normalize(const Vec3& n) {
+	float len = n.length();
+	if (len == 0.0f) return Vec3(0.f, 0.f, 0.f);
+
+	return {
+		n.x / len,
+		n.y / len,
+		n.z / len
+	};
 }

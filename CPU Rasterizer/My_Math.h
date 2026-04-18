@@ -2,6 +2,9 @@
 #pragma once
 #undef near
 #undef far
+
+static const float PI = 3.14159265358979323846f;
+
 class Vec3;
 class Vec2
 {
@@ -184,7 +187,7 @@ public:
 		t.y = mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * 1.0f;
 		t.z = mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * 1.0f;
 		float w = mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * 1.0f;
-        
+
 		if (w != 1.0f && w != 0.0f) {
 			t.x /= w;
 			t.y /= w;
@@ -217,7 +220,7 @@ public:
 };
 static Mat4 makeTranslationMatrix(Vec3 offset) {
 	Mat4 mat = Mat4::identity();
-	
+
 
 	mat[12] = offset.x;
 	mat[13] = offset.y;
@@ -226,11 +229,11 @@ static Mat4 makeTranslationMatrix(Vec3 offset) {
 }
 static Mat4 makeZRotationMatrix(float angle) {
 	angle = angle * 3.14159265359f / 180.0f;
-	
+
 	float sine = std::sin(angle);
 	float cosine = std::cos(angle);
 	Mat4 mat = Mat4::identity();
-	mat[0] = cosine; 
+	mat[0] = cosine;
 	mat[1] = sine;
 	mat[4] = -sine;
 	mat[5] = cosine;
@@ -243,7 +246,7 @@ static Mat4 makeYRotationMatrix(float angle) {
 	float sine = std::sin(angle);
 	float cosine = std::cos(angle);
 	Mat4 mat = Mat4::identity();
-	mat[0] = cosine; 
+	mat[0] = cosine;
 	mat[2] = -sine;
 	mat[5] = 1.0f;
 	mat[8] = sine;
@@ -265,11 +268,22 @@ static Mat4 makeXRotationMatrix(float angle) {
 	return mat;
 }
 
+static Mat4 makeRotationMatrix(Vec3 rotation) {
+	Mat4 mat = Mat4::identity();
+	if (abs(rotation.x) > 0)
+		mat = mat * makeXRotationMatrix(rotation.x);
+	if (abs(rotation.y) > 0)
+		mat = mat * makeYRotationMatrix(rotation.y);
+	if (abs(rotation.z) > 0)
+		mat = mat * makeZRotationMatrix(rotation.z);
+	return mat;
+}
+
 static Mat4 makeScalingMatrix(Vec3 scale) {
 	Mat4 mat = Mat4::identity();
 	mat[0] = scale.x;
 	mat[5] = scale.y;
-	mat[10] = scale.z; 
+	mat[10] = scale.z;
 
 	return mat;
 }

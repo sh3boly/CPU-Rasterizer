@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "common.h"
 #include <stdexcept>
+
 class Window {
 private:
 	const wchar_t*	name;

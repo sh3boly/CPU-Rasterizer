@@ -38,7 +38,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     bool sleepGranular = timeBeginPeriod(1);
     int framerate = 30;
     double secondsPerFrame = 1.0f / (float)framerate;
+    double fps = 30.0;
     while (running) {
+        window.showFPS(fps);
         int64_t start = getTicks();
         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -75,7 +77,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             }
         }
         end = getTicks();
-        double fps = 1.0 / getElapsed(start, end);
-        window.showFPS(fps);
+        fps = 1.0 / getElapsed(start, end);
     }
 }

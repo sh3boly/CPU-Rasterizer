@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "common.h"
+#include "bitmaps.h"
 #include <stdexcept>
 
 class Window {
@@ -48,6 +49,9 @@ public:
 	bool		shouldResize;
 	uint32_t	width;
 	uint32_t	height;
+	CharacterBitMap fps[3];
+	CharacterBitMap numbers[10];
+	CharacterBitMap equal;
 
 	Window(const wchar_t* name, HINSTANCE hInstance, int nCmdShow, Buffer *buffer, uint32_t w = 512, uint32_t h = 512) : name(name), hInstance(hInstance), buffer(buffer) {
 		WNDCLASS wc = {};
@@ -55,7 +59,7 @@ public:
 		wc.lpfnWndProc		= WindowProc;
 		wc.hInstance 		= hInstance;
 		wc.lpszClassName	= this->name;
-		
+
 		RegisterClass(&wc);
 
 		this->width = w;
@@ -73,7 +77,7 @@ public:
 			w,				// Width
 			h,				// Height
 
-			NULL,       // Parent window    
+			NULL,       // Parent window
 			NULL,       // Menu
 			this->hInstance,  // Instance handle
 			this
@@ -84,9 +88,14 @@ public:
 			throw std::runtime_error("failed to create a window");
 		}
 
+		generateFPSMask(this->fps);
+		generate7SegmentMask();
+		generateNumberMask(this->numbers);
+		this->equal = generateEqualMask();
+
 		ShowWindow(this->hWnd, nCmdShow);
 	}
-	
+
 	void resize(uint32_t width, uint32_t height) {
 		this->width = width;
 		this->height = height;
@@ -106,29 +115,46 @@ public:
 			DIB_RGB_COLORS,
 			SRCCOPY
 		);
+		ReleaseDC(hWnd, dc);
+	}
+
+	void applyMask(uint32_t* pixel, const CharacterBitMap& mask, int blockSize = 1) {
+		for (int j = 0; j < 7 * blockSize; j++) {
+		    for (int i = 0; i < 8; i++) {
+				uint32_t color = 0x0000;
+				if (mask.data[j / blockSize] & (1 << (7 - i))) {
+    			    color = 0xFFFF;
+    			} else {
+        			color = 0x0000;
+				}
+				for (int k = 0; k < blockSize; k++) {
+					pixel[(i * blockSize + j * buffer->width) + k] = color;
+				}
+			}
+		}
 	}
 
 	void showFPS(double fps) {
-		HDC hdc = GetDC(hWnd);
-		WCHAR buffer[64];
-		swprintf_s(buffer, L"FPS: %.2f", fps);;
-		RECT rect;
+	    int startX = width / 16;
+	    int startY = height / 16;
+		int unit = (int)fps % 10;
+		int tens = ((int)fps / 10) % 10;
 
-		rect.left = 10;
-		rect.top = 10;
-		rect.right = 200;
-		rect.bottom = 50;
+		CharacterBitMap unitChar = this->numbers[unit];
+		CharacterBitMap tensChar = this->numbers[tens];
 
-		DrawText(
-			hdc,
-			buffer,
-			-1,
-			&rect,
-			DT_CENTER
-		);
-
-		ReleaseDC(hWnd, hdc);
+		uint32_t* pixel = (uint32_t*)buffer->memory + (startY * buffer->width
+		+ startX);
+		int blockSize = 2;
+		for (int i = 0; i < 3; i++) {
+            applyMask(pixel, this->fps[i], 2);
+			pixel += (int)(8 * 1.5 * blockSize);
+		}
+		applyMask(pixel, this->equal, blockSize);
+		pixel += (int)(8 * 1.5 * blockSize);
+		applyMask(pixel, tensChar, blockSize);
+		pixel += (int)(8 * 1.5 * blockSize);
+		applyMask(pixel, unitChar, blockSize);
 	}
-	
-};
 
+};

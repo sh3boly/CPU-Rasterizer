@@ -26,7 +26,7 @@ static bool running = true;
 // Structs
 
 
-// Global Functions 
+// Global Functions
 
 static void resizeDibSection(Buffer* buf, uint32_t width, uint32_t height) {
     if (buf->memory) {
@@ -67,7 +67,6 @@ static void resizeZBuffer(float*& zBuffer, uint32_t width, uint32_t height) {
     }
 
     zBuffer = new float[width * height];
-    clearZBuffer(zBuffer, width, height);
 }
 
 // Timers

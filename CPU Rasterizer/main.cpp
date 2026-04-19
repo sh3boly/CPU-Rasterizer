@@ -1,4 +1,6 @@
+#include "common.h"
 #include "window.h"
+
 #pragma comment(lib, "Winmm.lib")
 #include <mmsystem.h>
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
@@ -16,6 +18,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     MSG msg;
     Buffer buffer;
     std::vector<Object> scene;
+    Camera camera(Vec3(0.f, 0.f, -10.f));
 
     //scene = loadObj("Untitled.obj");
 
@@ -27,8 +30,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     Mesh sphere = createSphere(info);
     Mesh sphere2 = createSphere(info);
 
-    Object obj1(Vec3(0.f, 0.f, -5.f), Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f), sphere);
-    Object obj2(Vec3(3.f, 0.f, -5.f), Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f), sphere2);
+    Object obj1(Vec3(0.f, 0.f, 0.f), Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f), sphere);
+    Object obj2(Vec3(3.f, 0.f, 0.f), Vec3(0.f, 0.f, 0.f), Vec3(1.f, 1.f, 1.f), sphere2);
     scene.push_back(obj1);
     scene.push_back(obj2);
 
@@ -51,10 +54,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             resizeZBuffer(zBuffer, window.width, window.height);
             window.shouldResize = false;
         }
+        clearZBuffer(zBuffer, window.width, window.height);
         int64_t end = getTicks();
         double elapsed = getElapsed(start, end);
 
-        graphicsPipeline(&buffer, zBuffer, scene);
+        graphicsPipeline(&buffer, zBuffer, scene, camera);
 
         window.display();
         if (elapsed < secondsPerFrame) {

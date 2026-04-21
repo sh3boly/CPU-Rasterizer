@@ -248,7 +248,7 @@ void project(Triangle& tri, const Mat4& mvp, uint32_t w, uint32_t h)
 
 static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Object> scene, Camera& camera)
 {
-    Mat4 view = camera.lookAt(Vec3(0.f, 0.f, 0.f));
+    Mat4 view = camera.lookAt();
     Mat4 projectionMatrix = makePerspectiveMatrix(90, (float)buffer->width / buffer->height, 0.1f, 100.0f);
 
     Mat4 mvp = view;

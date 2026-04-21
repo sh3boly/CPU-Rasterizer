@@ -69,6 +69,12 @@ static void resizeZBuffer(float*& zBuffer, uint32_t width, uint32_t height) {
     zBuffer = new float[width * height];
 }
 
+static void clearBuffer(void*& memory, uint32_t width, uint32_t height) {
+    for (size_t i = 0; i < width * height; i++) {
+        ((uint32_t*)memory)[i] = 0;
+    }
+}
+
 // Timers
 
 static inline int64_t getTicks() {

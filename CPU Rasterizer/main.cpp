@@ -1,4 +1,3 @@
-#include "common.h"
 #include "window.h"
 
 #pragma comment(lib, "Winmm.lib")
@@ -18,7 +17,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     MSG msg;
     Buffer buffer;
     std::vector<Object> scene;
-    Camera camera(Vec3(0.f, 0.f, -10.f));
+    Camera camera(Vec3(0.f, 0.f, 10.f));
 
     //scene = loadObj("Untitled.obj");
 
@@ -35,7 +34,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     scene.push_back(obj1);
     scene.push_back(obj2);
 
-    Window window(L"Renderer", hInstance, nCmdShow, &buffer);
+    Window window(L"Renderer", hInstance, nCmdShow, &buffer, &camera);
     float* zBuffer = new float[buffer.width * buffer.height];
     clearZBuffer(zBuffer, buffer.width, buffer.height);
     bool sleepGranular = timeBeginPeriod(1);
@@ -43,7 +42,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     double secondsPerFrame = 1.0f / (float)framerate;
     double fps = 30.0;
     while (running) {
-        window.showFPS(fps);
         int64_t start = getTicks();
         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
@@ -55,11 +53,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             window.shouldResize = false;
         }
         clearZBuffer(zBuffer, window.width, window.height);
+        clearBuffer(buffer.memory, window.width, window.height);
         int64_t end = getTicks();
         double elapsed = getElapsed(start, end);
 
         graphicsPipeline(&buffer, zBuffer, scene, camera);
 
+        window.showFPS(fps);
         window.display();
         if (elapsed < secondsPerFrame) {
             if (sleepGranular) {

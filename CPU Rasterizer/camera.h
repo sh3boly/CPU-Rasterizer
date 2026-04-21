@@ -1,35 +1,55 @@
+#pragma once
 #include "My_Math.h"
 
 class Camera {
     Vec3 position;
-    Vec3 direction;
+    Vec3 front = Vec3(0.f, 0.f, -1.f);
+    Vec3 right;
     Vec3 up;
+    const float cameraSpeed = 0.15f;
 public:
     Camera(Vec3 position) {
         this->position = position;
     }
 
-    Mat4 lookAt(Vec3 target) {
+    Mat4 lookAt() {
         // u v w
-        this->direction = normalize((target - this->position)); // w
+        this->front = normalize(this->front);
         Vec3 temp(0.0f, 1.f, 0.f); // v
-        Vec3 right = normalize(crossProduct(temp, this->direction));
-        this->up = normalize(crossProduct(this->direction, right));
+        this->right = normalize(crossProduct(this->front , temp));
+        this->up = normalize(crossProduct(this->right, this->front));
 
         Mat4 lookAt = Mat4::identity();
-        lookAt[0] = right.x;
-        lookAt[1] = right.y;
-        lookAt[2] = right.z;
+
+        lookAt[0] = this->right.x;
+        lookAt[1] = this->right.y;
+        lookAt[2] = this->right.z;
         lookAt[4] = this->up.x;
         lookAt[5] = this->up.y;
         lookAt[6] = this->up.z;
-        lookAt[8] = -this->direction.x;
-        lookAt[9] = -this->direction.y;
-        lookAt[10] = -this->direction.z;
-        lookAt[12] = -dotProduct(right, this->position);
+        lookAt[8] = -this->front.x;
+        lookAt[9] = -this->front.y;
+        lookAt[10] = -this->front.z;
+        lookAt[12] = -dotProduct(this->right, this->position);
         lookAt[13] = -dotProduct(this->up, this->position);
-        lookAt[14] = -dotProduct(this->direction, this->position);
+        lookAt[14] = dotProduct(this->front, this->position);
         return lookAt;
+    }
+
+    void moveForward() {
+        this->position += cameraSpeed * this->front;
+    }
+
+    void moveBackward() {
+        this->position -= cameraSpeed * this->front;
+    }
+
+    void moveLeft() {
+        this->position -= cameraSpeed * this->right;
+    }
+
+    void moveRight() {
+        this->position += cameraSpeed * this->right;
     }
 
 };

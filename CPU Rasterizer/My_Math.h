@@ -52,6 +52,7 @@ public:
 		this->y = 0.f;
 		this->z = 0.f;
 	}
+
 	Vec3 operator+(const Vec3& v) const {
 		Vec3 t;
 		t.x = this->x + v.x;
@@ -59,6 +60,13 @@ public:
 		t.z = this->z + v.z;
 		return t;
 	}
+
+	void operator+=(const Vec3& v) {
+		this->x += v.x;
+		this->y += v.y;
+		this->z += v.z;
+	}
+
 	Vec3 operator-(const Vec3& v) const {
 		Vec3 t;
 		t.x = this->x - v.x;
@@ -66,6 +74,13 @@ public:
 		t.z = this->z - v.z;
 		return t;
 	}
+
+	void operator-=(const Vec3& v) {
+		this->x -= v.x;
+		this->y -= v.y;
+		this->z -= v.z;
+	}
+
 	float length() const {
 		return std::sqrt(this->x * this->x + this->y * this->y + this->z * this->z);
 	}
@@ -77,9 +92,11 @@ public:
 		return t;
 	}
 };
+
 float dotProduct(const Vec3& v0, const Vec3& v1) {
 	return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z;
 }
+
 Vec3 crossProduct(const Vec3& v0, const Vec3& v1) {
 	Vec3 t;
 	t.x = v0.y * v1.z - v1.y * v0.z;
@@ -87,6 +104,23 @@ Vec3 crossProduct(const Vec3& v0, const Vec3& v1) {
 	t.z = v0.x * v1.y - v1.x * v0.y;
 	return t;
 }
+
+Vec3 operator*(const float& scalar, const Vec3& v1) {
+	Vec3 t;
+	t.x = v1.x * scalar;
+	t.y = v1.y * scalar;
+	t.z = v1.z * scalar;
+	return t;
+}
+
+Vec3 operator*(const Vec3& v1, const float& scalar) {
+	Vec3 t;
+	t.x = v1.x * scalar;
+	t.y = v1.y * scalar;
+	t.z = v1.z * scalar;
+	return t;
+}
+
 class Vec4
 {
 public:

@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "common.h"
 #include "bitmaps.h"
+#include "camera.h"
 #include <stdexcept>
 
 class Window {
@@ -9,6 +10,32 @@ private:
 	HINSTANCE	hInstance;
 	HWND		hWnd;
 	Buffer 		*buffer;
+	Camera      *camera;
+
+	void moveForward() {
+		if (camera) {
+			camera->moveForward();
+		}
+	}
+
+	void moveBackward() {
+		if (camera) {
+			camera->moveBackward();
+		}
+	}
+
+	void moveLeft() {
+		if (camera) {
+			camera->moveLeft();
+		}
+	}
+
+	void moveRight() {
+		if (camera) {
+			camera->moveRight();
+		}
+	}
+
 	static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam){
 		Window* window;
 
@@ -39,6 +66,31 @@ private:
 					return 0;
 
 				} break;
+				case WM_KEYDOWN: {
+				    uint32_t key = wParam;
+					switch (key) {
+						case 0x57: {
+						    // W
+							// Move the camera forward
+							window->moveForward();
+						} break;
+						case 0x41: {
+						    // A
+							// Move the camera left
+							window->moveLeft();
+						} break;
+						case 0x53: {
+						    // S
+							// Move the camera backward
+							window->moveBackward();
+						} break;
+						case 0x44: {
+						    // D
+							// Move the camera right
+							window->moveRight();
+						} break;
+					}
+				} break;
 			}
 		}
 
@@ -53,7 +105,8 @@ public:
 	CharacterBitMap numbers[10];
 	CharacterBitMap equal;
 
-	Window(const wchar_t* name, HINSTANCE hInstance, int nCmdShow, Buffer *buffer, uint32_t w = 512, uint32_t h = 512) : name(name), hInstance(hInstance), buffer(buffer) {
+	Window(const wchar_t* name, HINSTANCE hInstance, int nCmdShow, Buffer *buffer, Camera* camera, uint32_t w = 512,
+ uint32_t h = 512) : name(name), hInstance(hInstance), buffer(buffer), camera(camera) {
 		WNDCLASS wc = {};
 
 		wc.lpfnWndProc		= WindowProc;

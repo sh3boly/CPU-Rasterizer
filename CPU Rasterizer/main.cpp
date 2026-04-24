@@ -17,6 +17,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     MSG msg;
     Buffer buffer;
     std::vector<Object> scene;
+    Vec3 lightDir = {0.f, 0.f, -1.f};
     Camera camera(Vec3(0.f, 0.f, 10.f));
 
     //scene = loadObj("Untitled.obj");
@@ -38,8 +39,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
     float* zBuffer = new float[buffer.width * buffer.height];
     clearZBuffer(zBuffer, buffer.width, buffer.height);
     bool sleepGranular = timeBeginPeriod(1);
+
     int framerate = 30;
     double secondsPerFrame = 1.0f / (float)framerate;
+    double deltaTime = secondsPerFrame;
     double fps = 30.0;
     while (running) {
         int64_t start = getTicks();
@@ -57,10 +60,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         int64_t end = getTicks();
         double elapsed = getElapsed(start, end);
 
-        graphicsPipeline(&buffer, zBuffer, scene, camera);
+        graphicsPipeline(&buffer, zBuffer, scene, camera, lightDir, deltaTime);
 
         window.showFPS(fps);
         window.display();
+
         if (elapsed < secondsPerFrame) {
             if (sleepGranular) {
                 DWORD msToSleep = (DWORD)(1000.0 * (secondsPerFrame - elapsed));
@@ -81,6 +85,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             }
         }
         end = getTicks();
-        fps = 1.0 / getElapsed(start, end);
+        deltaTime = (float)getElapsed(start, end);
+        fps = 1.0 / deltaTime;
     }
 }

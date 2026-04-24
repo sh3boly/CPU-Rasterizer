@@ -121,22 +121,39 @@ Vec3 operator*(const Vec3& v1, const float& scalar) {
 	return t;
 }
 
+Vec3 operator/(const Vec3& v1, const float& scalar) {
+	Vec3 t;
+	t.x = v1.x / scalar;
+	t.y = v1.y / scalar;
+	t.z = v1.z / scalar;
+	return t;
+}
+
 class Vec4
 {
 public:
 	float x, y, z, w;
-	Vec4(float x, float y, float z, float w) {
+	Vec4(const float x, const float y, const float z, const float w) {
 		this->x = x;
 		this->y = y;
 		this->z = z;
 		this->w = w;
 	}
+
+	Vec4(const Vec3& v, const float w) {
+		this->x = v.x;
+		this->y = v.y;
+		this->z = v.z;
+		this->w = w;
+	}
+
 	Vec4() {
 		this->x = 0.f;
 		this->y = 0.f;
 		this->z = 0.f;
 		this->w = 0.f;
 	}
+
 	Vec4 operator+(const Vec4& v) const {
 		Vec4 t;
 		t.x = this->x + v.x;
@@ -215,19 +232,13 @@ public:
 		return mat;
 	}
 
-	Vec3 operator*(const Vec3& v) const {
-		Vec3 t;
-		t.x = mat[0] * v.x + mat[4] * v.y + mat[8]  * v.z + mat[12] * 1.0f;
-		t.y = mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * 1.0f;
-		t.z = mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * 1.0f;
-		float w = mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * 1.0f;
-
-		if (w != 1.0f && w != 0.0f) {
-			t.x /= w;
-			t.y /= w;
-			t.z /= w;
-		}
-		return t;
+	Vec4 operator*(const Vec3& v) const {
+			Vec4 t;
+			t.x = mat[0] * v.x + mat[4] * v.y + mat[8]  * v.z + mat[12] * 1.0f;
+			t.y = mat[1] * v.x + mat[5] * v.y + mat[9]  * v.z + mat[13] * 1.0f;
+			t.z = mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * 1.0f;
+			t.w = mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * 1.0f;
+			return t;
 	}
 
 	Vec4 operator*(const Vec4& v) const {
@@ -251,6 +262,7 @@ public:
 		}
 		return mat[index];
 	}
+
 };
 static Mat4 makeTranslationMatrix(Vec3 offset) {
 	Mat4 mat = Mat4::identity();

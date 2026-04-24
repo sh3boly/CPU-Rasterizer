@@ -90,17 +90,17 @@ std::vector<Triangle> loadObj(std::string filename) {
             }
 
             Vertex v0, v1, v2;
-            v0.coordinates = temp_positions[v[0]];
-            v1.coordinates = temp_positions[v[1]];
-            v2.coordinates = temp_positions[v[2]];
+            v0.coordinates = Vec4(temp_positions[v[0]], 1.0f);
+            v1.coordinates = Vec4(temp_positions[v[1]], 1.0f);
+            v2.coordinates = Vec4(temp_positions[v[2]], 1.0f);
             if (n[0] != -1) {
-                v0.normal = temp_normals[n[0]];
+                v0.normal = Vec4(temp_normals[n[0]], 0.0f);
             }
             if (n[1] != -1) {
-                v1.normal = temp_normals[n[1]];
+                v1.normal = Vec4(temp_normals[n[1]], 0.0f);
             }
             if (n[2] != -1) {
-                v2.normal = temp_normals[n[2]];
+                v2.normal = Vec4(temp_normals[n[2]], 0.0f);
             }
             mesh.push_back({ v0, v1, v2 });
 
@@ -230,37 +230,62 @@ void rasterizeTriangle(Triangle& t1, Buffer* buffer, float* zbuffer)
 //    ofs.close();
 //}
 
-void project(Triangle& tri, const Mat4& mvp, uint32_t w, uint32_t h)
+Triangle project(Triangle& tri, const Mat4& mvp, uint32_t w, uint32_t h)
 {
+    Triangle projected = tri;
     for (int i = 0; i < 3; i++) {
-        /*tri.vertices[i].coordinates.x /= size;
-        tri.vertices[i].coordinates.y /= size;
-        tri.vertices[i].coordinates.z /= size;*/
 
-        tri.vertices[i].coordinates = mvp * tri.vertices[i].coordinates;
+        if (projected.vertices[i].coordinates.w <= 0) {
+            return {};
+        }
 
+        if (projected.vertices[i].coordinates.w != 1.0f && projected.vertices[i].coordinates.w != 0.0f) {
+            projected.vertices[i].coordinates.x /= projected.vertices[i].coordinates.w;
+            projected.vertices[i].coordinates.y /= projected.vertices[i].coordinates.w;
+            projected.vertices[i].coordinates.z /= projected.vertices[i].coordinates.w;
+        }
 
-        tri.vertices[i].coordinates.x = (tri.vertices[i].coordinates.x + 1) * (w / 2.0f);
-        tri.vertices[i].coordinates.y = (tri.vertices[i].coordinates.y + 1) * (h / 2.0f);
+        projected.vertices[i].coordinates.x = (projected.vertices[i].coordinates.x + 1) * (w / 2.0f);
+        projected.vertices[i].coordinates.y = (projected.vertices[i].coordinates.y + 1) * (h / 2.0f);
     }
 
+    return projected;
 }
 
-static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Object> scene, Camera& camera)
+void applyLighting(Triangle& tri, const Vec3& lightDir) {
+    for (int i = 0; i < 3; i++) {
+        Vec3 normal = tri.vertices[i].normal;
+        Vec3 color = Vec3(1.f, 1.f, 0.0f);
+        Vec3 L = lightDir;
+        color = color * (1 / PI) * std::max(0.0f, dotProduct(normal, L));
+
+        tri.vertices[i].color = color;
+    }
+}
+
+static void graphicsPipeline(Buffer* buffer, float* zBuffer, std::vector<Object> scene, Camera& camera, Vec3& lightDir, double deltaTime)
 {
-    Mat4 view = camera.lookAt();
+    Mat4 view = camera.lookAt(deltaTime);
     Mat4 projectionMatrix = makePerspectiveMatrix(90, (float)buffer->width / buffer->height, 0.1f, 100.0f);
 
     Mat4 mvp = view;
-    mvp = projectionMatrix * mvp;
+
 
     for (Object& object : scene)
     {
         object.transform();
         for (Triangle& tri : object.mesh.triangles) {
-            Triangle projected = tri;
-            project(projected, mvp, buffer->width, buffer->height);
-            rasterizeTriangle(projected, buffer, zBuffer);
+
+            tri *= mvp;
+            // Lighting here
+            applyLighting(tri, lightDir);
+
+            tri *= projectionMatrix;
+
+            Triangle projected = project(tri, mvp, buffer->width, buffer->height);
+            if (projected.vertices[0].coordinates.w != 0.0f) {
+                rasterizeTriangle(projected, buffer, zBuffer);
+            }
         }
     }
 }

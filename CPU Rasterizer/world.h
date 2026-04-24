@@ -8,9 +8,9 @@ struct PrimitiveInfo {
 
 struct Vertex
 {
-    Vec3 coordinates;
+    Vec4 coordinates;
     Vec3 color;
-    Vec3 normal;
+    Vec4 normal;
 };
 struct Rgb
 {
@@ -30,6 +30,13 @@ public:
 
         for (int i = 0; i < 3; i++) {
             vertices[i].coordinates = transformMatrix * vertices[i].coordinates;
+            vertices[i].normal = Vec4(normalize(transformMatrix * vertices[i].normal), 0.0f);
+        }
+    }
+    void operator*=(const Mat4& mvp) {
+        for (int i = 0; i < 3; i++) {
+            vertices[i].coordinates = mvp * vertices[i].coordinates;
+            vertices[i].normal = Vec4(normalize(mvp * vertices[i].normal), 0.0f);
         }
     }
 };
@@ -69,10 +76,11 @@ private:
     Vec3 position;
     Vec3 rotation;
     Vec3 size;
+    Vec3 albedo;
 public:
     Mesh mesh;
-    Object(Vec3 pos, Vec3 rot, Vec3 sz, const Mesh& m)
-        : position(pos), rotation(rot), size(sz), mesh(m) {
+    Object(const Vec3& pos, const Vec3& rot, const Vec3& sz, const Mesh& m, const Vec3& albedo = Vec3(0.18f, 0.18f, 0.18f))
+        : position(pos), rotation(rot), size(sz), mesh(m), albedo(albedo) {
     }
 
     void transform() {
@@ -110,10 +118,11 @@ Mesh createSphere(const PrimitiveInfo& info) {
     // Top vertex
     uint32_t c = 0;
 
+    Vec3 thirdVertex = normalize(Vec3(0.f, info.size.y, 0.0));
     mesh.vertices[c++] = {
-        {0.f, info.size.y, 0.0f},
+        {0.f, info.size.y, 0.0f, 1.0f},
         {1.f , 1.f, 1.f},
-        normalize(Vec3(0.f, info.size.y, 0.0f))
+        Vec4(thirdVertex, 0.0f)
     };
 
     for (uint32_t j = 1; j < thetaCount; j++) {
@@ -128,15 +137,15 @@ Mesh createSphere(const PrimitiveInfo& info) {
 
             Vec3 n = normalize(p);
             Vec3 color = Vec3(1.f, 1.f, 1.f);
-            mesh.vertices[c++] = { p, color, n };
+            mesh.vertices[c++] = { Vec4(p, 1.0f), color, Vec4(n, 0.0f)};
 
         }
     }
     // Bottom vertex
     mesh.vertices[c++] = {
-        {0.f, -info.size.y, 0.0f},
+        {0.f, -info.size.y, 0.0f, 1.0f},
         {1.f, 1.f, 1.f},
-        normalize({0.f, -info.size.y, 0.f})
+        Vec4(normalize({0.f, -info.size.y, 0.f}), 0.0f)
     };
 
     // Triangles construction

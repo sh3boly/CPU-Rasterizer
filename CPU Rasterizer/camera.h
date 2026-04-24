@@ -6,14 +6,17 @@ class Camera {
     Vec3 front = Vec3(0.f, 0.f, -1.f);
     Vec3 right;
     Vec3 up;
-    const float cameraSpeed = 0.15f;
+    float cameraSpeed = 0.25f;
+    double deltaTime = 1 / 30.0;
 public:
     Camera(Vec3 position) {
         this->position = position;
     }
 
-    Mat4 lookAt() {
+    Mat4 lookAt(double deltaTime) {
         // u v w
+        this->cameraSpeed = 2.5f * deltaTime;
+
         this->front = normalize(this->front);
         Vec3 temp(0.0f, 1.f, 0.f); // v
         this->right = normalize(crossProduct(this->front , temp));
@@ -21,18 +24,18 @@ public:
 
         Mat4 lookAt = Mat4::identity();
 
-        lookAt[0] = this->right.x;
-        lookAt[1] = this->right.y;
-        lookAt[2] = this->right.z;
-        lookAt[4] = this->up.x;
-        lookAt[5] = this->up.y;
-        lookAt[6] = this->up.z;
-        lookAt[8] = -this->front.x;
-        lookAt[9] = -this->front.y;
-        lookAt[10] = -this->front.z;
-        lookAt[12] = -dotProduct(this->right, this->position);
-        lookAt[13] = -dotProduct(this->up, this->position);
-        lookAt[14] = dotProduct(this->front, this->position);
+        lookAt[0]   = this->right.x;
+        lookAt[1]   = this->right.y;
+        lookAt[2]   = this->right.z;
+        lookAt[4]   = this->up.x;
+        lookAt[5]   = this->up.y;
+        lookAt[6]   = this->up.z;
+        lookAt[8]   = -this->front.x;
+        lookAt[9]   = -this->front.y;
+        lookAt[10]  = -this->front.z;
+        lookAt[12]  = -dotProduct(this->right, this->position);
+        lookAt[13]  = -dotProduct(this->up, this->position);
+        lookAt[14]  = dotProduct(this->front, this->position);
         return lookAt;
     }
 
